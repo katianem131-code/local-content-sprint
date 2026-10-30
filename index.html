@@ -107,5 +107,5 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>show(b.dataset
   async function enter(session){if(!session){auth.style.display='flex';if(app)app.style.display='none';return}auth.style.display='none';if(app)app.style.display='flex';const signout=document.createElement('button');signout.className='btn ghost';signout.textContent='Sign out';signout.onclick=()=>client.auth.signOut();document.querySelector('.topbar')?.appendChild(signout)}
   if(client){client.auth.getSession().then(({data})=>enter(data.session));client.auth.onAuthStateChange((_event,session)=>enter(session));}else{enter(null)}
 })();
-</script><script>fetch('assets/brand-logo-original.b64').then(r=>r.text()).then(data=>document.querySelectorAll('img[src="assets/local-content-sprint-logo.jpg"]').forEach(img=>{img.src='data:image/jpeg;base64,'+data.trim();}));</script></body></html>
+</script><script>document.querySelectorAll('img[src="assets/local-content-sprint-logo.jpg"]').forEach(img=>{img.src='assets/brand-logo-optimized.jpg';});</script></body></html>
 
