@@ -134,5 +134,19 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>show(b.dataset
   window.saveProfile=function(){oldSaveProfile();uid().then(user=>user&&db.from('profiles').upsert({user_id:user,business_name:state.profile.name,category:state.profile.category,audience:state.profile.audience,offer:state.profile.offer,problem:state.profile.problem,updated_at:new Date().toISOString()},{onConflict:'user_id'}));};
   db.auth.getSession().then(({data})=>data.session&&loadState());
 })();
+</script><script>
+/* Persist Offer Worksheet and Weekly Planner in Supabase. */
+(function(){
+  const db=window.localContentSprintSupabase;
+  if(!db) return;
+  const userId=async()=>{const r=await db.auth.getUser();return r.data.user?.id};
+  const weekKey=()=>{const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return d.toISOString().slice(0,10)};
+  const buttonByText=(text)=>Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()===text);
+  async function saveWorksheet(){const user=await userId();const sec=document.getElementById('worksheet');if(!user||!sec)return;const data={};sec.querySelectorAll('input,textarea').forEach((el,i)=>data['field_'+i]=el.value);await db.from('worksheets').upsert({user_id:user,worksheet_type:'offer_promotion',data,updated_at:new Date().toISOString()},{onConflict:'user_id,worksheet_type'});toast('Worksheet saved to your account');}
+  async function savePlanner(){const user=await userId();const sec=document.getElementById('planner');if(!user||!sec)return;const days=Array.from(sec.querySelectorAll('.planner-day')).map((day,i)=>({day:i+1,moment:day.querySelector('select')?.value||'',topic:day.querySelector('input[placeholder="Add a topic"]')?.value||'',cta:day.querySelector('input[placeholder="Choose a CTA"]')?.value||'',planned:!!day.querySelector('.planner-status input')?.checked}));const reviews=Array.from(sec.querySelectorAll('.review-card textarea')).map(x=>x.value);await db.from('weekly_plans').upsert({user_id:user,week_start:weekKey(),data:{days,reviews},updated_at:new Date().toISOString()},{onConflict:'user_id,week_start'});toast('Weekly plan saved to your account');}
+  async function loadModules(){const user=await userId();if(!user)return;const [w,p]=await Promise.all([db.from('worksheets').select('data').eq('user_id',user).eq('worksheet_type','offer_promotion').maybeSingle(),db.from('weekly_plans').select('data').eq('user_id',user).eq('week_start',weekKey()).maybeSingle()]);if(w.data?.data){const sec=document.getElementById('worksheet');sec?.querySelectorAll('input,textarea').forEach((el,i)=>{el.value=w.data.data['field_'+i]||''})}if(p.data?.data){const sec=document.getElementById('planner');(p.data.data.days||[]).forEach((d,i)=>{const day=sec?.querySelectorAll('.planner-day')[i];if(!day)return;day.querySelector('select').value=d.moment||'Attract';day.querySelector('input[placeholder="Add a topic"]').value=d.topic||'';day.querySelector('input[placeholder="Choose a CTA"]').value=d.cta||'';const box=day.querySelector('.planner-status input');if(box){box.checked=!!d.planned;box.dispatchEvent(new Event('change'))}});(p.data.data.reviews||[]).forEach((v,i)=>{const el=sec?.querySelectorAll('.review-card textarea')[i];if(el)el.value=v||''})}}
+  document.addEventListener('click',e=>{if(e.target.closest('button')===buttonByText('Save worksheet'))saveWorksheet();if(e.target.closest('button')===buttonByText('Save weekly plan'))savePlanner()});
+  db.auth.getSession().then(({data})=>data.session&&setTimeout(loadModules,300));
+})();
 </script><script>document.querySelectorAll('img[src="assets/local-content-sprint-logo.jpg"]').forEach(img=>{img.src='assets/brand-logo-optimized.jpg';});</script></body></html>
 
