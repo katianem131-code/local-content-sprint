@@ -55,15 +55,29 @@ create table if not exists public.weekly_plans (
   unique(user_id, week_start)
 );
 
+create table if not exists public.entitlements (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  product_key text not null,
+  status text not null default 'active',
+  source text not null default 'cakto',
+  external_order_id text,
+  purchased_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, product_key)
+);
+
 alter table public.profiles enable row level security;
 alter table public.saved_posts enable row level security;
 alter table public.calendar_progress enable row level security;
 alter table public.worksheets enable row level security;
 alter table public.weekly_plans enable row level security;
+alter table public.entitlements enable row level security;
 
 create policy "Users manage their profile" on public.profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage their saved posts" on public.saved_posts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage their calendar progress" on public.calendar_progress for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage their worksheets" on public.worksheets for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "Users manage their weekly plans" on public.weekly_plans for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users read their entitlements" on public.entitlements for select using (auth.uid() = user_id);
 
