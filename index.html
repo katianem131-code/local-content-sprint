@@ -107,5 +107,32 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>show(b.dataset
   async function enter(session){if(!session){auth.style.display='flex';if(app)app.style.display='none';return}auth.style.display='none';if(app)app.style.display='flex';const signout=document.createElement('button');signout.className='btn ghost';signout.textContent='Sign out';signout.onclick=()=>client.auth.signOut();document.querySelector('.topbar')?.appendChild(signout)}
   if(client){client.auth.getSession().then(({data})=>enter(data.session));client.auth.onAuthStateChange((_event,session)=>enter(session));}else{enter(null)}
 })();
+</script><script>
+/* Supabase persistence layer for the authenticated workspace. */
+(function(){
+  const db=window.localContentSprintSupabase;
+  if(!db) return;
+  const uid=async()=>{const r=await db.auth.getUser();return r.data.user?.id};
+  const originalPersist=window.persist;
+  window.persist=function(){originalPersist(); syncState()};
+  async function syncState(){const user=await uid();if(!user)return;
+    await db.from('profiles').upsert({user_id:user,business_name:state.profile?.name||'',category:state.profile?.category||'',audience:state.profile?.audience||'',offer:state.profile?.offer||'',problem:state.profile?.problem||'',updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    for(const day of state.done||[]) await db.from('calendar_progress').upsert({user_id:user,day_number:day,status:'completed',completed_at:new Date().toISOString()},{onConflict:'user_id,day_number'});
+  }
+  async function loadState(){const user=await uid();if(!user)return;
+    const [p,s,c]=await Promise.all([db.from('profiles').select('*').eq('user_id',user).maybeSingle(),db.from('saved_posts').select('*').eq('user_id',user).order('created_at',{ascending:false}),db.from('calendar_progress').select('day_number').eq('user_id',user).eq('status','completed')]);
+    if(p.data){state.profile={name:p.data.business_name||'',category:p.data.category||'',audience:p.data.audience||'',offer:p.data.offer||'',problem:p.data.problem||''};['name','category','audience','offer','problem'].forEach(k=>{const el=document.getElementById('biz-'+(k==='name'?'name':k));if(el)el.value=state.profile[k]||''})}
+    if(s.data)state.saved=s.data.map(x=>({id:x.id,title:x.title,moment:x.moment,platform:x.platform,hook:x.hook,body:x.body,cta:x.cta}));
+    if(c.data)state.done=c.data.map(x=>x.day_number);
+    originalPersist();renderRecent();updateStats();
+  }
+  const oldSaveDraft=window.saveDraft;
+  window.saveDraft=function(){oldSaveDraft();const post=state.saved?.[0];if(post)uid().then(user=>user&&db.from('saved_posts').upsert({id:String(post.id),user_id:user,title:post.title,moment:post.moment,platform:post.platform,hook:post.hook,body:post.body,cta:post.cta}));};
+  const oldToggleDay=window.toggleDay;
+  window.toggleDay=function(i){oldToggleDay(i);uid().then(user=>user&&db.from('calendar_progress').upsert({user_id:user,day_number:i,status:state.done.includes(i)?'completed':'reopened',completed_at:state.done.includes(i)?new Date().toISOString():null},{onConflict:'user_id,day_number'}));};
+  const oldSaveProfile=window.saveProfile;
+  window.saveProfile=function(){oldSaveProfile();uid().then(user=>user&&db.from('profiles').upsert({user_id:user,business_name:state.profile.name,category:state.profile.category,audience:state.profile.audience,offer:state.profile.offer,problem:state.profile.problem,updated_at:new Date().toISOString()},{onConflict:'user_id'}));};
+  db.auth.getSession().then(({data})=>data.session&&loadState());
+})();
 </script><script>document.querySelectorAll('img[src="assets/local-content-sprint-logo.jpg"]').forEach(img=>{img.src='assets/brand-logo-optimized.jpg';});</script></body></html>
 
