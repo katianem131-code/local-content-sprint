@@ -27,8 +27,10 @@ function getSignature(req) {
   );
 }
 
-function validSignature(rawBody, signature, secret) {
+function validSignature(rawBody, signature, secret, payloadSecret) {
   if (!secret) return true;
+  // Cakto's documented payload includes the webhook key as `secret`.
+  if (payloadSecret && payloadSecret === secret) return true;
   if (!signature) return false;
   const supplied = String(signature).replace(/^sha256=/i, '').trim();
   const digestHex = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
@@ -104,10 +106,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const rawBody = await readBody(req);
-    if (!validSignature(rawBody, getSignature(req), process.env.CAKTO_WEBHOOK_SECRET)) {
+    const payload = JSON.parse(rawBody || '{}');
+    if (!validSignature(rawBody, getSignature(req), process.env.CAKTO_WEBHOOK_SECRET, payload.secret)) {
       return res.status(401).json({ ok: false, error: 'Invalid webhook signature' });
     }
-    const payload = JSON.parse(rawBody || '{}');
     const info = extract(payload);
     const key = productKey(info);
     if (!info.email || !key) return res.status(200).json({ ok: true, ignored: true });
