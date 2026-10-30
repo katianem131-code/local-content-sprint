@@ -74,10 +74,16 @@ alter table public.worksheets enable row level security;
 alter table public.weekly_plans enable row level security;
 alter table public.entitlements enable row level security;
 
+drop policy if exists "Users manage their profile" on public.profiles;
 create policy "Users manage their profile" on public.profiles for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users manage their saved posts" on public.saved_posts;
 create policy "Users manage their saved posts" on public.saved_posts for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users manage their calendar progress" on public.calendar_progress;
 create policy "Users manage their calendar progress" on public.calendar_progress for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users manage their worksheets" on public.worksheets;
 create policy "Users manage their worksheets" on public.worksheets for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users manage their weekly plans" on public.weekly_plans;
 create policy "Users manage their weekly plans" on public.weekly_plans for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "Users read their entitlements" on public.entitlements;
 create policy "Users read their entitlements" on public.entitlements for select using (auth.uid() = user_id);
 
